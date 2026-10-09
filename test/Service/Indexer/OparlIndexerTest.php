@@ -388,6 +388,18 @@ class OparlIndexerTest extends TestCase
         );
     }
 
+    public function testSkipsWithoutConfiguration(): void
+    {
+        $configLoader = $this->createStub(IndexerConfigurationLoader::class);
+        $configLoader->method('exists')->willReturn(false);
+
+        $this->createIndexer(configLoader: $configLoader)->index();
+
+        $this->assertSame([], $this->server->requests);
+        $this->assertSame([], $this->progress->errors);
+        $this->assertSame([], $this->progress->events);
+    }
+
     public function testDoesNotPrepareIndex(): void
     {
         $this->server->page(self::MEETINGS, [self::meeting(1)]);
@@ -435,6 +447,7 @@ class OparlIndexerTest extends TestCase
     {
         $this->server->page(self::MEETINGS, [self::meeting(1)]);
         $configLoader = $this->createMock(IndexerConfigurationLoader::class);
+        $configLoader->method('exists')->willReturn(true);
         $configLoader->expects($this->exactly(2))
             ->method('load')
             ->willReturn(new IndexerConfiguration(
@@ -631,6 +644,7 @@ class OparlIndexerTest extends TestCase
         );
         if ($configLoader === null) {
             $configLoader = $this->createStub(IndexerConfigurationLoader::class);
+            $configLoader->method('exists')->willReturn(true);
             $configLoader->method('load')->willReturn(new IndexerConfiguration(
                 'oparl-meeting',
                 'Sitzungen',

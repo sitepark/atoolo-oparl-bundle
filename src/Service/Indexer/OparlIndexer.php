@@ -109,6 +109,15 @@ class OparlIndexer extends AbstractIndexer
 
     public function index(): IndexerStatus
     {
+        // the scheduler of the index bundle runs every scheduled source, also
+        // in installations whose CMS does not configure it
+        if (!$this->enabled()) {
+            $this->logger->info('Indexer is not configured, skipped', [
+                'index' => $this->getKey(),
+            ]);
+            return $this->progressHandler->getStatus();
+        }
+
         // no expiry: a run may take longer than any fixed time to live
         $lock = $this->lockFactory->createLock(
             'indexer.' . $this->getKey(),
