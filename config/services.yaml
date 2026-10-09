@@ -1,0 +1,301 @@
+parameters:
+  # Options of the Symfony HTTP client used for all OParl requests
+  # (https://symfony.com/doc/current/http_client.html#configuration)
+  atoolo_oparl.http_client.options:
+    timeout: 30
+    max_duration: 300
+    max_redirects: 5
+  atoolo_oparl.http_client.max_retries: 3
+  # seconds referenced objects (organizations, persons, meetings) are cached
+  atoolo_oparl.reference_cache_ttl: 86400
+  # referenced objects kept in memory during a run, 0 = none
+  atoolo_oparl.reference_resolver.max_memory_entries: 2000
+  # outside of the kernel cache dir, so that cache:clear keeps the state of
+  # the delta runs
+  atoolo_oparl.cache_dir: '%kernel.project_dir%/var/oparl'
+
+services:
+
+  _defaults:
+    autowire: false
+    autoconfigure: false
+
+  # --- Infrastructure ------------------------------------------------------
+
+  atoolo_oparl.http_client:
+    class: Symfony\Contracts\HttpClient\HttpClientInterface
+    factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+    arguments:
+      - '%atoolo_oparl.http_client.options%'
+
+  # Adapter of the cache pool atoolo_oparl.cache (delta state and
+  # reference cache). The bundle registers the pool with this adapter as a
+  # default; a project overrides it like any other pool, e.g. to share it
+  # between servers via Redis:
+  #   framework.cache.pools.atoolo_oparl.cache.adapter: cache.adapter.redis
+  # Without the framework bundle the pool is created by
+  # Atoolo\Oparl\DependencyInjection\Compiler\DefaultCachePoolPass.
+  atoolo_oparl.cache.adapter.filesystem:
+    class: Symfony\Component\Cache\Adapter\FilesystemAdapter
+    abstract: true
+    arguments:
+      - ''
+      - 0
+      - '%atoolo_oparl.cache_dir%'
+    tags:
+      - { name: 'cache.pool', clearer: 'cache.default_clearer', reset: 'reset' }
+
+  atoolo_oparl.client:
+    class: SP\OparlClient\OparlClient
+    factory: ['Atoolo\Oparl\Service\Http\OparlClientFactory', 'create']
+    arguments:
+      - '@atoolo_oparl.http_client'
+      - '%atoolo_oparl.http_client.max_retries%'
+      - '@logger'
+
+  atoolo_oparl.caching_client:
+    class: SP\OparlClient\OparlClient
+    factory: ['Atoolo\Oparl\Service\Http\OparlClientFactory', 'createCaching']
+    arguments:
+      - '@atoolo_oparl.http_client'
+      - '@atoolo_oparl.cache'
+      - '%atoolo_oparl.reference_cache_ttl%'
+      - '%atoolo_oparl.http_client.max_retries%'
+      - '@logger'
+
+  atoolo_oparl.reference_resolver:
+    class: Atoolo\Oparl\Service\OparlReferenceResolver
+    arguments:
+      - '@atoolo_oparl.caching_client'
+      - '%atoolo_oparl.reference_resolver.max_memory_entries%'
+      - '@logger'
+
+  Atoolo\Oparl\Service\OparlReferenceResolver:
+    alias: atoolo_oparl.reference_resolver
+
+  atoolo_oparl.indexer.list_fetcher:
+    class: Atoolo\Oparl\Service\Indexer\OparlListFetcher
+    arguments:
+      - '@atoolo_oparl.client'
+      - '@logger'
+
+  atoolo_oparl.indexer.state_store:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexerStateStore
+    arguments:
+      - '@atoolo_oparl.cache'
+
+  # Decides which OParl objects are indexed. Replace it to leave out
+  # objects, see Atoolo\Oparl\Service\Indexer\OparlObjectFilter.
+  atoolo_oparl.indexer.object_filter:
+    class: Atoolo\Oparl\Service\Indexer\AcceptAllOparlObjectFilter
+
+  atoolo_oparl.indexer.document_remover:
+    class: Atoolo\Oparl\Service\Indexer\Schema2x\SolrOparlDocumentRemover
+    arguments:
+      - '@atoolo_search.indexer.solr_index_service'
+
+  # --- Solr (Schema 2.x) enrichers -----------------------------------------
+  # Project specific enrichers are tagged the same way, with a priority
+  # below 50 to run after these.
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\CommonSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 100 }
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\MeetingSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 50 }
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\PaperSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 50 }
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\OrganizationSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 50 }
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\PersonSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 50 }
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\AgendaItemSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 50 }
+
+  Atoolo\Oparl\Service\Indexer\Schema2x\FileSchema2xEnricher:
+    tags:
+      - { name: 'atoolo_oparl.indexer.document_enricher.schema2x', priority: 50 }
+
+  # --- Indexers ------------------------------------------------------------
+  # One indexer per object type. An indexer is only active if the CMS
+  # provides its configuration configs/indexer/<source>.php. Schedule them
+  # via the parameter atoolo_index.indexer.schedules, e.g.
+  # { oparl-meeting: '*/30 * * * *' }.
+
+  atoolo_oparl.indexer.meeting.progress_state:
+    class: Atoolo\Index\Service\Indexer\IndexerProgressState
+    arguments:
+      - '@atoolo_index.index_name'
+      - '@atoolo_index.indexer.status_store'
+      - 'oparl-meeting'
+
+  atoolo_oparl.indexer.meeting:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexer
+    arguments:
+      - !php/enum Atoolo\Oparl\Service\Indexer\OparlObjectType::MEETING
+      - !tagged_iterator atoolo_oparl.indexer.document_enricher.schema2x
+      - '@atoolo_oparl.indexer.list_fetcher'
+      - '@atoolo_search.indexer.solr_index_service'
+      - '@atoolo_oparl.indexer.document_remover'
+      - '@atoolo_oparl.indexer.object_filter'
+      - '@atoolo_oparl.indexer.state_store'
+      - '@atoolo_oparl.indexer.meeting.progress_state'
+      - '@atoolo_index.indexer.aborter'
+      - '@atoolo_index.indexer.configuration_loader'
+      - '@atoolo_index.index_name'
+      - 'oparl-meeting'
+      - '@atoolo_index.indexer.php_limit_increaser'
+      - '@logger'
+      - '@?lock.factory'
+    tags:
+      - { name: 'atoolo_index.indexer', priority: 10 }
+
+  atoolo_oparl.indexer.paper.progress_state:
+    class: Atoolo\Index\Service\Indexer\IndexerProgressState
+    arguments:
+      - '@atoolo_index.index_name'
+      - '@atoolo_index.indexer.status_store'
+      - 'oparl-paper'
+
+  atoolo_oparl.indexer.paper:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexer
+    arguments:
+      - !php/enum Atoolo\Oparl\Service\Indexer\OparlObjectType::PAPER
+      - !tagged_iterator atoolo_oparl.indexer.document_enricher.schema2x
+      - '@atoolo_oparl.indexer.list_fetcher'
+      - '@atoolo_search.indexer.solr_index_service'
+      - '@atoolo_oparl.indexer.document_remover'
+      - '@atoolo_oparl.indexer.object_filter'
+      - '@atoolo_oparl.indexer.state_store'
+      - '@atoolo_oparl.indexer.paper.progress_state'
+      - '@atoolo_index.indexer.aborter'
+      - '@atoolo_index.indexer.configuration_loader'
+      - '@atoolo_index.index_name'
+      - 'oparl-paper'
+      - '@atoolo_index.indexer.php_limit_increaser'
+      - '@logger'
+      - '@?lock.factory'
+    tags:
+      - { name: 'atoolo_index.indexer', priority: 10 }
+
+  atoolo_oparl.indexer.organization.progress_state:
+    class: Atoolo\Index\Service\Indexer\IndexerProgressState
+    arguments:
+      - '@atoolo_index.index_name'
+      - '@atoolo_index.indexer.status_store'
+      - 'oparl-organization'
+
+  atoolo_oparl.indexer.organization:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexer
+    arguments:
+      - !php/enum Atoolo\Oparl\Service\Indexer\OparlObjectType::ORGANIZATION
+      - !tagged_iterator atoolo_oparl.indexer.document_enricher.schema2x
+      - '@atoolo_oparl.indexer.list_fetcher'
+      - '@atoolo_search.indexer.solr_index_service'
+      - '@atoolo_oparl.indexer.document_remover'
+      - '@atoolo_oparl.indexer.object_filter'
+      - '@atoolo_oparl.indexer.state_store'
+      - '@atoolo_oparl.indexer.organization.progress_state'
+      - '@atoolo_index.indexer.aborter'
+      - '@atoolo_index.indexer.configuration_loader'
+      - '@atoolo_index.index_name'
+      - 'oparl-organization'
+      - '@atoolo_index.indexer.php_limit_increaser'
+      - '@logger'
+      - '@?lock.factory'
+    tags:
+      - { name: 'atoolo_index.indexer', priority: 10 }
+
+  atoolo_oparl.indexer.person.progress_state:
+    class: Atoolo\Index\Service\Indexer\IndexerProgressState
+    arguments:
+      - '@atoolo_index.index_name'
+      - '@atoolo_index.indexer.status_store'
+      - 'oparl-person'
+
+  atoolo_oparl.indexer.person:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexer
+    arguments:
+      - !php/enum Atoolo\Oparl\Service\Indexer\OparlObjectType::PERSON
+      - !tagged_iterator atoolo_oparl.indexer.document_enricher.schema2x
+      - '@atoolo_oparl.indexer.list_fetcher'
+      - '@atoolo_search.indexer.solr_index_service'
+      - '@atoolo_oparl.indexer.document_remover'
+      - '@atoolo_oparl.indexer.object_filter'
+      - '@atoolo_oparl.indexer.state_store'
+      - '@atoolo_oparl.indexer.person.progress_state'
+      - '@atoolo_index.indexer.aborter'
+      - '@atoolo_index.indexer.configuration_loader'
+      - '@atoolo_index.index_name'
+      - 'oparl-person'
+      - '@atoolo_index.indexer.php_limit_increaser'
+      - '@logger'
+      - '@?lock.factory'
+    tags:
+      - { name: 'atoolo_index.indexer', priority: 10 }
+
+  atoolo_oparl.indexer.agendaItem.progress_state:
+    class: Atoolo\Index\Service\Indexer\IndexerProgressState
+    arguments:
+      - '@atoolo_index.index_name'
+      - '@atoolo_index.indexer.status_store'
+      - 'oparl-agendaItem'
+
+  atoolo_oparl.indexer.agendaItem:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexer
+    arguments:
+      - !php/enum Atoolo\Oparl\Service\Indexer\OparlObjectType::AGENDA_ITEM
+      - !tagged_iterator atoolo_oparl.indexer.document_enricher.schema2x
+      - '@atoolo_oparl.indexer.list_fetcher'
+      - '@atoolo_search.indexer.solr_index_service'
+      - '@atoolo_oparl.indexer.document_remover'
+      - '@atoolo_oparl.indexer.object_filter'
+      - '@atoolo_oparl.indexer.state_store'
+      - '@atoolo_oparl.indexer.agendaItem.progress_state'
+      - '@atoolo_index.indexer.aborter'
+      - '@atoolo_index.indexer.configuration_loader'
+      - '@atoolo_index.index_name'
+      - 'oparl-agendaItem'
+      - '@atoolo_index.indexer.php_limit_increaser'
+      - '@logger'
+      - '@?lock.factory'
+    tags:
+      - { name: 'atoolo_index.indexer', priority: 10 }
+
+  atoolo_oparl.indexer.file.progress_state:
+    class: Atoolo\Index\Service\Indexer\IndexerProgressState
+    arguments:
+      - '@atoolo_index.index_name'
+      - '@atoolo_index.indexer.status_store'
+      - 'oparl-file'
+
+  atoolo_oparl.indexer.file:
+    class: Atoolo\Oparl\Service\Indexer\OparlIndexer
+    arguments:
+      - !php/enum Atoolo\Oparl\Service\Indexer\OparlObjectType::FILE
+      - !tagged_iterator atoolo_oparl.indexer.document_enricher.schema2x
+      - '@atoolo_oparl.indexer.list_fetcher'
+      - '@atoolo_search.indexer.solr_index_service'
+      - '@atoolo_oparl.indexer.document_remover'
+      - '@atoolo_oparl.indexer.object_filter'
+      - '@atoolo_oparl.indexer.state_store'
+      - '@atoolo_oparl.indexer.file.progress_state'
+      - '@atoolo_index.indexer.aborter'
+      - '@atoolo_index.indexer.configuration_loader'
+      - '@atoolo_index.index_name'
+      - 'oparl-file'
+      - '@atoolo_index.indexer.php_limit_increaser'
+      - '@logger'
+      - '@?lock.factory'
+    tags:
+      - { name: 'atoolo_index.indexer', priority: 10 }
