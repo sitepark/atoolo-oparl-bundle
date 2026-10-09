@@ -37,8 +37,9 @@ final class Schema2xFields
     }
 
     /**
-     * Sets the date range of the document. Without an end the range is the
-     * start day.
+     * Sets the date range of the document. Without an end, or with an end
+     * before the start - some servers send midnight for an unknown end
+     * time - the range is the start.
      */
     public static function setDates(
         IndexSchema2xDocument $doc,
@@ -51,7 +52,9 @@ final class Schema2xFields
         }
         $doc->sp_date = $from;
         $doc->sp_date_from = $from;
-        $doc->sp_date_to = self::toDateTime($end) ?? $from;
+        $doc->sp_date_to = $end !== null && $end >= $start
+            ? self::toDateTime($end)
+            : $from;
         $doc->sp_date_list = [$from];
     }
 

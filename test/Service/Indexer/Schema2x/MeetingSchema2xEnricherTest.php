@@ -68,6 +68,26 @@ class MeetingSchema2xEnricherTest extends EnricherTestCase
         $this->assertFalse($fields['sp_meta_bool_oparl_cancelled']);
     }
 
+    public function testEndBeforeStart(): void
+    {
+        $doc = (new MeetingSchema2xEnricher())->enrichDocument(
+            new OparlMeeting(
+                id: self::MEETING,
+                start: new DateTimeImmutable('2027-11-23T16:00:00+01:00'),
+                end: new DateTimeImmutable('2027-11-23T00:00:00+01:00'),
+            ),
+            self::parameter(),
+            new IndexSchema2xDocument(),
+            'p',
+        );
+
+        $this->assertEquals(
+            new DateTime('2027-11-23T16:00:00+01:00'),
+            $doc->sp_date_to,
+            'an end before the start should not be indexed',
+        );
+    }
+
     public function testMinimalMeeting(): void
     {
         $doc = (new MeetingSchema2xEnricher())->enrichDocument(
