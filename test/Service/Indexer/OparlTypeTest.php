@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Atoolo\Oparl\Test\Service\Indexer;
 
-use Atoolo\Oparl\Service\Indexer\OparlObjectType;
+use Atoolo\Oparl\Service\Indexer\OparlType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use SP\OparlClient\Core\OparlReference;
 use SP\OparlClient\V1\Objects\OparlBody;
 
-#[CoversClass(OparlObjectType::class)]
-class OparlObjectTypeTest extends TestCase
+#[CoversClass(OparlType::class)]
+class OparlTypeTest extends TestCase
 {
     public function testListOf(): void
     {
@@ -25,8 +25,8 @@ class OparlObjectTypeTest extends TestCase
         );
 
         $uris = array_map(
-            static fn(OparlObjectType $type) => $type->listOf($body)?->getUri(),
-            OparlObjectType::cases(),
+            static fn(OparlType $type) => $type->listOf($body)?->getUri(),
+            OparlType::cases(),
         );
 
         $this->assertSame(['m', 'pa', 'o', 'p', 'a', 'f'], $uris);
@@ -34,11 +34,11 @@ class OparlObjectTypeTest extends TestCase
 
     public function testListOfMissing(): void
     {
-        $this->assertNull(OparlObjectType::FILE->listOf(new OparlBody()));
+        $this->assertNull(OparlType::FILE->listOf(new OparlBody()));
     }
 
     public function testSource(): void
     {
-        $this->assertSame('oparl-agendaItem', OparlObjectType::AGENDA_ITEM->source());
+        $this->assertSame('oparl-agendaItem', OparlType::AGENDA_ITEM->source());
     }
 }

@@ -17,7 +17,7 @@ use SP\OparlClient\V1\Objects\OparlObjectV1;
 use SP\OparlClient\V1\Objects\OparlSystem;
 
 /**
- * Opens the body wide lists of one object type. Only the first page of each
+ * Opens the body wide lists of one OParl type. Only the first page of each
  * list is fetched here; its pagination tells the indexer how many objects
  * to expect, the remaining pages are fetched lazily by
  * {@see OparlList::all()}.
@@ -34,7 +34,7 @@ class OparlListFetcher
      */
     public function openLists(
         OparlIndexerParameter $parameter,
-        OparlObjectType $type,
+        OparlType $type,
         ?DateTimeInterface $modifiedSince,
     ): array {
         $lists = [];

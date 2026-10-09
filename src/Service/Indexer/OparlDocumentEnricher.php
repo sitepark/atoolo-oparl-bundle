@@ -14,7 +14,7 @@ use SP\OparlClient\V1\Objects\OparlObjectV1;
  * Enrichers are target specific and registered per target with a tag of
  * their own, for Solr `atoolo_oparl.indexer.document_enricher.schema2x`.
  * All enrichers of a target are called for every object, in the order of
- * their priority; an enricher that only handles one object type checks the
+ * their priority; an enricher that only handles one OParl type checks the
  * type itself. A project adds its own mapping by registering a further
  * enricher with a lower priority than the ones of this bundle.
  *

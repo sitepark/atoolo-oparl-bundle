@@ -6,7 +6,7 @@ namespace Atoolo\Oparl\Test\Service\Indexer;
 
 use Atoolo\Oparl\Dto\Indexer\OparlIndexerParameter;
 use Atoolo\Oparl\Service\Indexer\OparlListFetcher;
-use Atoolo\Oparl\Service\Indexer\OparlObjectType;
+use Atoolo\Oparl\Service\Indexer\OparlType;
 use Atoolo\Oparl\Test\Fixture\FakeOparlServer;
 use DateTimeImmutable;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -48,7 +48,7 @@ class OparlListFetcherTest extends TestCase
     {
         $lists = $this->fetcher->openLists(
             new OparlIndexerParameter('oparl-paper', 'Vorlagen', self::SYSTEM),
-            OparlObjectType::PAPER,
+            OparlType::PAPER,
             null,
         );
 
@@ -61,7 +61,7 @@ class OparlListFetcherTest extends TestCase
     {
         $lists = $this->fetcher->openLists(
             new OparlIndexerParameter('oparl-paper', 'Vorlagen', '', [self::BODY_1]),
-            OparlObjectType::PAPER,
+            OparlType::PAPER,
             null,
         );
 
@@ -79,7 +79,7 @@ class OparlListFetcherTest extends TestCase
                 [self::BODY_1],
                 omitInternal: true,
             ),
-            OparlObjectType::PAPER,
+            OparlType::PAPER,
             new DateTimeImmutable('2026-10-08T12:00:00+00:00'),
         );
 
@@ -93,7 +93,7 @@ class OparlListFetcherTest extends TestCase
     {
         $lists = $this->fetcher->openLists(
             new OparlIndexerParameter('oparl-file', 'Dateien', self::SYSTEM),
-            OparlObjectType::FILE,
+            OparlType::FILE,
             null,
         );
 
@@ -109,7 +109,7 @@ class OparlListFetcherTest extends TestCase
 
         $lists = $this->fetcher->openLists(
             new OparlIndexerParameter('oparl-paper', 'Vorlagen', self::SYSTEM),
-            OparlObjectType::PAPER,
+            OparlType::PAPER,
             null,
         );
 

@@ -9,7 +9,7 @@
 Indexes the data of an [OParl](https://oparl.org) API - meetings, papers,
 organizations, persons, agenda items and files - into the search index.
 
-The bundle provides one indexer per OParl object type on top of
+The bundle provides one indexer per OParl type on top of
 [atoolo/index-bundle](https://github.com/sitepark/atoolo-index-bundle). The
 data is fetched with [sitepark/oparl-client](https://github.com/sitepark/oparl-php-client)
 and written to Solr through [atoolo/search-bundle](https://github.com/sitepark/atoolo-search-bundle).

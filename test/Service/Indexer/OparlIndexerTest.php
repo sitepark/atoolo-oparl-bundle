@@ -18,7 +18,7 @@ use Atoolo\Oparl\Service\Indexer\OparlObjectFilter;
 use Atoolo\Oparl\Service\Indexer\OparlIndexer;
 use Atoolo\Oparl\Service\Indexer\OparlIndexerStateStore;
 use Atoolo\Oparl\Service\Indexer\OparlListFetcher;
-use Atoolo\Oparl\Service\Indexer\OparlObjectType;
+use Atoolo\Oparl\Service\Indexer\OparlType;
 use Atoolo\Oparl\Service\Indexer\Schema2x\CommonSchema2xEnricher;
 use Atoolo\Oparl\Test\Fixture\FakeOparlServer;
 use Atoolo\Oparl\Test\Fixture\InMemoryIndexService;
@@ -606,11 +606,11 @@ class OparlIndexerTest extends TestCase
         $this->assertSame([], $this->index->calls);
     }
 
-    public function testGetObjectType(): void
+    public function testGetOparlType(): void
     {
         $this->assertSame(
-            OparlObjectType::MEETING,
-            $this->createIndexer()->getObjectType(),
+            OparlType::MEETING,
+            $this->createIndexer()->getOparlType(),
         );
     }
 
@@ -644,7 +644,7 @@ class OparlIndexerTest extends TestCase
         $indexName->method('name')->willReturn('test');
 
         return new OparlIndexer(
-            OparlObjectType::MEETING,
+            OparlType::MEETING,
             $enrichers ?: [new CommonSchema2xEnricher()],
             new OparlListFetcher($client),
             $this->index,

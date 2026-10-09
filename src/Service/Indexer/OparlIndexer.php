@@ -29,7 +29,7 @@ use Symfony\Component\Lock\Store\SemaphoreStore;
 use Throwable;
 
 /**
- * Indexes the objects of one OParl object type - meetings, papers, ... -
+ * Indexes the objects of one OParl type - meetings, papers, ... -
  * of all configured bodies. One instance is registered per type, each with
  * a source of its own (`oparl-meeting`, `oparl-paper`, ...), so that every
  * type has its own status, schedule and cleanup.
@@ -63,7 +63,7 @@ class OparlIndexer extends AbstractIndexer
      * @param iterable<OparlDocumentEnricher<IndexDocument>> $documentEnricherList
      */
     public function __construct(
-        private readonly OparlObjectType $objectType,
+        private readonly OparlType $oparlType,
         private readonly iterable $documentEnricherList,
         private readonly OparlListFetcher $fetcher,
         private readonly IndexService $indexService,
@@ -90,9 +90,9 @@ class OparlIndexer extends AbstractIndexer
             ?? new LockFactory(new SemaphoreStore());
     }
 
-    public function getObjectType(): OparlObjectType
+    public function getOparlType(): OparlType
     {
-        return $this->objectType;
+        return $this->oparlType;
     }
 
     /**
@@ -143,17 +143,17 @@ class OparlIndexer extends AbstractIndexer
 
             $this->logger->info('Start indexing', [
                 'index' => $this->getKey(),
-                'type' => $this->objectType->value,
+                'type' => $this->oparlType->value,
                 'fullRun' => $fullRun,
                 'modifiedSince' => $modifiedSince?->format(DATE_ATOM),
             ]);
             $this->progressHandler->prepare(
-                'Fetch OParl ' . $this->objectType->value . ' lists',
+                'Fetch OParl ' . $this->oparlType->value . ' lists',
             );
 
             $lists = $this->fetcher->openLists(
                 $parameter,
-                $this->objectType,
+                $this->oparlType,
                 $modifiedSince,
             );
 

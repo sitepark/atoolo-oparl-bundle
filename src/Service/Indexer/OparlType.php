@@ -10,13 +10,13 @@ use SP\OparlClient\V1\Objects\OparlBody;
 use SP\OparlClient\V1\Objects\OparlObjectV1;
 
 /**
- * The OParl object types that can be indexed. Each type is fetched through
+ * The OParl types that can be indexed. Each type is fetched through
  * the body wide list of the same name; one indexer is registered per type.
  *
  * The lists for agenda items and files only exist since OParl 1.1. A
  * server that only speaks 1.0 does not provide them.
  */
-enum OparlObjectType: string
+enum OparlType: string
 {
     case MEETING = 'meeting';
     case PAPER = 'paper';

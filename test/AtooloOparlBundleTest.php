@@ -11,7 +11,7 @@ use Atoolo\Index\Service\Indexer\PhpLimitIncreaser;
 use Atoolo\Index\Service\IndexName;
 use Atoolo\Oparl\AtooloOparlBundle;
 use Atoolo\Oparl\Service\Indexer\OparlIndexer;
-use Atoolo\Oparl\Service\Indexer\OparlObjectType;
+use Atoolo\Oparl\Service\Indexer\OparlType;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
@@ -33,11 +33,11 @@ class AtooloOparlBundleTest extends TestCase
         foreach (array_keys($container->findTaggedServiceIds('atoolo_index.indexer')) as $id) {
             $indexer = $container->get($id);
             $this->assertInstanceOf(OparlIndexer::class, $indexer);
-            $sources[$indexer->getSource()] = $indexer->getObjectType();
+            $sources[$indexer->getSource()] = $indexer->getOparlType();
         }
 
         $expected = [];
-        foreach (OparlObjectType::cases() as $type) {
+        foreach (OparlType::cases() as $type) {
             $expected[$type->source()] = $type;
         }
         $this->assertEquals($expected, $sources);
