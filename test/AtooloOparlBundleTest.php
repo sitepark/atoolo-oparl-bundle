@@ -38,7 +38,7 @@ class AtooloOparlBundleTest extends TestCase
 
         $expected = [];
         foreach (OparlType::cases() as $type) {
-            $expected[$type->source()] = $type;
+            $expected['oparl-' . $type->value] = $type;
         }
         $this->assertEquals($expected, $sources);
     }

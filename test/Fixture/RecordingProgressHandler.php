@@ -24,6 +24,8 @@ final class RecordingProgressHandler implements IndexerProgressHandler
 
     public int $skipped = 0;
 
+    public int $unchanged = 0;
+
     public function prepare(string $message): void
     {
         $this->events[] = 'prepare';
@@ -47,6 +49,11 @@ final class RecordingProgressHandler implements IndexerProgressHandler
     public function skip(int $step): void
     {
         $this->skipped += $step;
+    }
+
+    public function unchanged(int $step): void
+    {
+        $this->unchanged += $step;
     }
 
     public function error(Throwable $throwable): void

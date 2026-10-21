@@ -18,7 +18,7 @@
         "php": ">=8.2 <8.6.0",
         "atoolo/index-bundle": "^1",
         "atoolo/resource-bundle": "^1",
-        "atoolo/search-bundle": "1.x-dev",
+        "atoolo/search-bundle": "dev-main",
         "php-http/discovery": "^1.19",
         "psr/cache": "^2.0 || ^3.0",
         "psr/http-client": "^1.0",
