@@ -9,6 +9,7 @@ use DateTimeInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SP\OparlClient\Core\OparlList;
+use SP\OparlClient\Core\OparlReference;
 use SP\OparlClient\Core\Query\Modified;
 use SP\OparlClient\Core\Query\OmitInternal;
 use SP\OparlClient\OparlClient;
@@ -39,7 +40,7 @@ class OparlListFetcher
     ): array {
         $lists = [];
         foreach ($this->bodies($parameter) as $body) {
-            $reference = $type->listOf($body);
+            $reference = self::listOf($type, $body);
             if ($reference === null) {
                 $this->logger->warning(
                     'OParl body provides no list of type ' . $type->value,
@@ -55,6 +56,25 @@ class OparlListFetcher
             )->get();
         }
         return $lists;
+    }
+
+    /**
+     * The body wide list of the type, null if the body does not provide it.
+     *
+     * @return OparlReference<OparlList<OparlObjectV1>>|null
+     */
+    public static function listOf(OparlType $type, OparlBody $body): ?OparlReference
+    {
+        /** @var OparlReference<OparlList<OparlObjectV1>>|null $reference */
+        $reference = match ($type) {
+            OparlType::MEETING => $body->getMeeting(),
+            OparlType::PAPER => $body->getPaper(),
+            OparlType::ORGANIZATION => $body->getOrganization(),
+            OparlType::PERSON => $body->getPerson(),
+            OparlType::AGENDA_ITEM => $body->getAgendaItem(),
+            OparlType::FILE => $body->getFile(),
+        };
+        return $reference;
     }
 
     /**
